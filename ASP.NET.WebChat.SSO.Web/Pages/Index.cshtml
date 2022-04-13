@@ -1,0 +1,63 @@
+﻿@page
+@model IndexModel 
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+</div>
+
+<div id="webchat" role="main"></div>
+
+<script>
+    const styleSet = window.WebChat.createStyleSet({
+         bubbleBackground: 'rgba(0, 0, 255, .1)',
+         bubbleFromUserBackground: 'rgba(0, 255, 0, .1)',
+         rootHeight: '100%',
+         rootWidth: '100%'
+      });
+
+  window.WebChat.renderWebChat({ 
+    directLine: window.WebChat.createDirectLine({ token: '@Model.Token' }), 
+    styleSet,
+    userID: '@Model.UserId',
+    store: createStore({}, ({ dispatch }) => next => action => {
+        if (action.type === 'DIRECT_LINE/INCOMING_ACTIVITY' && action.payload.activity.from.role === 'bot') {
+          const { content } =
+            (action.payload.activity.attachments || []).find(
+              ({ contentType }) => contentType === 'application/vnd.microsoft.card.oauth'
+            ) || {};
+
+          if (content) {
+            const { tokenExchangeResource: { uri } = {} } = content;
+
+            if (uri) {
+
+              $.ajax({
+                type: 'GET',
+                // Note the difference in url (this works if you're actually in Index page)
+                url: '?handler=OAuth&conversationId=' + action.payload.activity.conversation.id +
+                    '&token=' + '@Model.Token' +
+                    '&userId=' + '@Model.UserId' +
+                    '&connectionName=' + content.connectionName +
+                    '&resourceUri=' + content.tokenExchangeResource.uri,
+                contentType: 'application/json; charset=utf-8',
+                success: function (data) {
+                  alert(data);
+                },
+                error: function (error) {
+                  alert("Error: " + error);
+                }
+              });
+
+              return false;
+            }
+          }
+        }
+
+        return next(action);
+      })
+  }, document.getElementById('webchat')); 
+</script>
